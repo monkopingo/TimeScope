@@ -22,9 +22,7 @@ def get_file_description(exe_path: str) -> str:
             return None
 
         lang, codepage = info[0]
-
         str_info_path = u"\\StringFileInfo\\%04X%04X\\FileDescription" % (lang, codepage)
-
         description = win32api.GetFileVersionInfo(exe_path, str_info_path)
         if description:
             return description
@@ -83,16 +81,22 @@ class AppUsageTracker:
             })
 
     def get_active_window(self):
+        """
+        Возвращает кортеж (app, title). Если активное окно не определено,
+        возвращает ("Idle", ""). Это позволяет продолжать считать время.
+        """
         try:
             hwnd = win32gui.GetForegroundWindow()
             if hwnd == 0:
-                return None, None
+                return "Idle", ""
             _, pid = win32process.GetWindowThreadProcessId(hwnd)
             app_description = get_process_description(pid)
             title = win32gui.GetWindowText(hwnd)
+            if not app_description:
+                app_description = "Unknown"
             return app_description, title
         except Exception:
-            return None, None
+            return "Idle", ""
 
     def track(self):
         while self.running:
@@ -100,18 +104,14 @@ class AppUsageTracker:
             now = datetime.datetime.now()
             with self.lock:
                 if self.current_event is None:
-                    if app is not None:
-                        self.current_event = {"app": app, "title": title, "start": now, "end": now}
+                    self.current_event = {"app": app, "title": title, "start": now, "end": now}
                 else:
                     if app == self.current_event["app"] and title == self.current_event["title"]:
                         self.current_event["end"] = now
                     else:
                         self.events.append(self.current_event)
                         self._insert_event_to_db(self.current_event)
-                        if app is not None:
-                            self.current_event = {"app": app, "title": title, "start": now, "end": now}
-                        else:
-                            self.current_event = None
+                        self.current_event = {"app": app, "title": title, "start": now, "end": now}
             time.sleep(1)
 
     def _insert_event_to_db(self, event):
