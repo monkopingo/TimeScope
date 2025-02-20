@@ -82,8 +82,7 @@ class AppUsageTracker:
 
     def get_active_window(self):
         """
-        Возвращает кортеж (app, title). Если активное окно не определено,
-        возвращает ("Idle", ""). Это позволяет продолжать считать время.
+        thanks gpt for fix
         """
         try:
             hwnd = win32gui.GetForegroundWindow()
